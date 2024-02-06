@@ -91,8 +91,21 @@ void CudaKeySearchDevice::init(const secp256k1::uint256 &start, int compression,
     cudaCall(setIncrementorPoint(p.x, p.y));
 }
 
+void CudaKeySearchDevice::updateStride()
+{
+        // Set the incrementor
+    secp256k1::ecpoint g = secp256k1::G();
+    secp256k1::ecpoint p = secp256k1::multiplyPoint(secp256k1::uint256((uint64_t)_threads * _blocks * _pointsPerThread) * _stride, g);
+    cudaCall(setIncrementorPoint(p.x, p.y));
+}
 
-void CudaKeySearchDevice::generateStartingPoints()
+void CudaKeySearchDevice::reset()
+{
+    _iterations = 0;
+}
+
+
+void CudaKeySearchDevice::generateStartingPoints() //todo instead of generate key pairs by stride generate by iteration of 1
 {
     uint64_t totalPoints = (uint64_t)_pointsPerThread * _threads * _blocks;
     uint64_t totalMemory = totalPoints * 40;
@@ -142,7 +155,7 @@ void CudaKeySearchDevice::setTargets(const std::set<KeySearchTarget> &targets)
     cudaCall(_targetLookup.setTargets(_targets));
 }
 
-void CudaKeySearchDevice::doStep()
+void CudaKeySearchDevice::doStep() //todo iterate by stride
 {
     uint64_t numKeys = (uint64_t)_blocks * _threads * _pointsPerThread;
 

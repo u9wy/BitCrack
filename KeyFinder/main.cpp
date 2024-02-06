@@ -54,10 +54,15 @@ typedef struct {
     unsigned int elapsed = 0;
     secp256k1::uint256 stride = 1;
 
+    std::string strideMode = "";
+
     bool follow = false;
 }RunConfig;
 
 static RunConfig _config;
+
+const std::string STRIDE_MODE_FIXED = "fixed";
+const std::string STRIDE_MODE_INCREMENTAL = "incremental";
 
 std::vector<DeviceManager::DeviceInfo> _devices;
 
@@ -66,6 +71,8 @@ void writeCheckpoint(secp256k1::uint256 nextKey);
 static uint64_t _lastUpdate = 0;
 static uint64_t _runningTime = 0;
 static uint64_t _startTime = 0;
+
+KeyFinder keyFinder;
 
 /**
 * Callback to display the private key
@@ -213,6 +220,7 @@ void usage()
     printf("                          :+COUNT\n");
     printf("                        Where START, END, COUNT are in hex format\n");
     printf("--stride N              Increment by N keys at a time\n");
+    printf("--stride-mode MODE      Select stride-mode fixed or incremental \nincremental is efault\n");
     printf("--share M/N             Divide the keyspace into N equal shares, process the Mth share\n");
     printf("--continue FILE         Save/load progress from FILE\n");
 }
@@ -399,25 +407,57 @@ int run()
         }
 
         // Get device context
-        KeySearchDevice *d = getDeviceContext(_devices[_config.device], _config.blocks, _config.threads, _config.pointsPerThread);
+        KeySearchDevice *device = getDeviceContext(_devices[_config.device], _config.blocks, _config.threads, _config.pointsPerThread);
 
-        KeyFinder f(_config.nextKey, _config.endKey, _config.compression, d, _config.stride);
+        secp256k1::uint256 mutableStride = _config.strideMode == STRIDE_MODE_INCREMENTAL ? 1 :_config.stride; //todo if keystride incremental start with 1 first then change to stride value to config value after initialising objects
 
-        f.setResultCallback(resultCallback);
-        f.setStatusInterval(_config.statusInterval);
-        f.setStatusCallback(statusCallback);
+        KeyFinder keyFinder(_config.nextKey, _config.endKey, _config.compression, device, mutableStride);
 
-        f.init();
+        keyFinder.setResultCallback(resultCallback);
+        keyFinder.setStatusInterval(_config.statusInterval);
+        keyFinder.setStatusCallback(statusCallback);
 
-        if(!_config.targetsFile.empty()) {
-            f.setTargets(_config.targetsFile);
-        } else {
-            f.setTargets(_config.targets);
+        keyFinder.init();
+
+        if(_config.strideMode == STRIDE_MODE_INCREMENTAL)
+        {
+            mutableStride = _config.stride;
+            keyFinder.updateStride();
         }
 
-        f.run();
+        if(!_config.targetsFile.empty()) {
+            keyFinder.setTargets(_config.targetsFile);
+        } else {
+            keyFinder.setTargets(_config.targets);
+        }
 
-        delete d;
+        secp256k1::uint256 difference = _config.endKey - _config.startKey;
+        secp256k1::uint256 halfDifference = difference.div(2);
+
+        if (_config.strideMode == STRIDE_MODE_FIXED)
+        {
+            keyFinder.run();
+        }
+        else if (_config.strideMode == STRIDE_MODE_INCREMENTAL)
+        {
+            while (!keyFinder.isTargetsEmpty() && mutableStride.cmp((_config.endKey - _config.startKey).div(2)) < 0)
+            {
+
+                keyFinder.run();
+                keyFinder.reset();
+                keyFinder.incrementStride(); 
+                // mutableStride = mutableStride.add(1); //not needed because value is passed as a reference
+                Logger::log(LogLevel::Info, "Counting by: " + mutableStride.toString());
+            }
+            // todo add configuration paraemter to config and use it here
+            // todo if targets not empty increment the stride downards from config.stride until targets is empty or mutableStride reaches 1
+        }
+        else
+        {
+            keyFinder.run();
+        }
+
+        delete device;
     } catch(KeySearchException ex) {
         Logger::log(LogLevel::Info, "Error: " + ex.msg);
         return 1;
@@ -517,6 +557,7 @@ int main(int argc, char **argv)
     parser.add("", "--continue", true);
     parser.add("", "--share", true);
     parser.add("", "--stride", true);
+    parser.add("", "--stride-mode", true);
 
     try {
         parser.parse(argc, argv);
@@ -600,7 +641,20 @@ int main(int argc, char **argv)
                 if(_config.stride.cmp(0) == 0) {
                     throw std::string("argument is out of range");
                 }
-            } else if(optArg.equals("-f", "--follow")) {
+            } else if(optArg.equals("", "--stride-mode")) {
+                if(optArg.arg != STRIDE_MODE_FIXED || optArg.arg != STRIDE_MODE_INCREMENTAL) {
+                    throw std::string("invalid stride-mode : " +
+                     optArg.arg +
+                      "set " +
+                       STRIDE_MODE_FIXED + 
+                       "or" +
+                        STRIDE_MODE_INCREMENTAL +
+                         "instead");
+            }
+                else {
+                    _config.strideMode = optArg.arg;
+                }
+            }else if(optArg.equals("-f", "--follow")) {
                 _config.follow = true;
             }
 

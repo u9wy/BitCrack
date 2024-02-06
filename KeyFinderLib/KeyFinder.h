@@ -52,6 +52,7 @@ public:
 	void init();
 	void run();
 	void stop();
+	void reset();
 
 	void setResultCallback(void(*callback)(KeySearchResult));
 	void setStatusCallback(void(*callback)(KeySearchStatus));
@@ -59,6 +60,9 @@ public:
 
 	void setTargets(std::string targetFile);
 	void setTargets(std::vector<std::string> &targets);
+	void incrementStride();
+	void updateStride();
+	bool isTargetsEmpty();
 
     secp256k1::uint256 getNextKey();
 };

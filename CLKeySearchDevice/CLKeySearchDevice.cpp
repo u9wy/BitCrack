@@ -211,6 +211,19 @@ void CLKeySearchDevice::init(const secp256k1::uint256 &start, int compression, c
     }
 }
 
+void CLKeySearchDevice::updateStride()
+{
+    secp256k1::ecpoint g = secp256k1::G();
+    secp256k1::ecpoint p = secp256k1::multiplyPoint(secp256k1::uint256((uint64_t)_points ) * _stride, g);
+
+    setIncrementor(p);
+}
+
+void CLKeySearchDevice::reset()
+{
+    _iterations = 0;
+}
+
 void CLKeySearchDevice::doStep()
 {
     try {

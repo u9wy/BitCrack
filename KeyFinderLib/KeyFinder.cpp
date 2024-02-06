@@ -43,6 +43,21 @@ KeyFinder::~KeyFinder()
 {
 }
 
+void KeyFinder::incrementStride() {
+    _stride = _stride.add(1);
+	updateStride();
+}
+
+void KeyFinder::updateStride() 
+{
+	_device->updateStride();
+}
+
+bool KeyFinder::isTargetsEmpty() 
+{
+	return _targets.empty();
+}
+
 void KeyFinder::setTargets(std::vector<std::string> &targets)
 {
 	if(targets.size() == 0) {
@@ -158,6 +173,15 @@ bool KeyFinder::isTargetInList(const unsigned int hash[5])
 	return _targets.find(t) != _targets.end();
 }
 
+void KeyFinder::reset() 
+{
+	_device->reset();
+	_iterCount = 0;
+	_running = false;
+	_totalTime = 0;
+	_total = 0;
+}
+
 
 void KeyFinder::run()
 {
@@ -173,7 +197,7 @@ void KeyFinder::run()
 
 	_totalTime = 0;
 
-	while(_running) {
+	while(_running) { //todo instead of iterating by 1 iterate by stride
 
         _device->doStep();
         _iterCount++;

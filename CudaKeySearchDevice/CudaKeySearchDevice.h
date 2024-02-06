@@ -86,6 +86,11 @@ public:
     virtual void getMemoryInfo(uint64_t &freeMem, uint64_t &totalMem);
 
     virtual secp256k1::uint256 getNextKey();
+
+    virtual void updateStride();
+
+    virtual void reset();
+
 };
 
 #endif
