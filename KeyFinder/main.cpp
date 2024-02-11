@@ -20,7 +20,7 @@
 #include "CLKeySearchDevice.h"
 #endif
 
-typedef struct {
+struct RunConfig{
     // startKey is the first key. We store it so that if the --continue
     // option is used, the correct progress is displayed. startKey and
     // nextKey are only equal at the very beginning. nextKey gets saved
@@ -55,9 +55,14 @@ typedef struct {
     secp256k1::uint256 stride = 1;
 
     bool follow = false;
-}RunConfig;
+
+    std::string strideMode = "";
+};
 
 static RunConfig _config;
+
+const std::string STRIDE_MODE_FIXED = "fixed";
+const std::string STRIDE_MODE_INCREMENTAL = "incremental";
 
 std::vector<DeviceManager::DeviceInfo> _devices;
 
@@ -213,6 +218,7 @@ void usage()
     printf("                          :+COUNT\n");
     printf("                        Where START, END, COUNT are in hex format\n");
     printf("--stride N              Increment by N keys at a time\n");
+    printf("--stride-mode MODE      Select stride-mode fixed or incremental \nincremental is efault\n");
     printf("--share M/N             Divide the keyspace into N equal shares, process the Mth share\n");
     printf("--continue FILE         Save/load progress from FILE\n");
 }
@@ -401,7 +407,9 @@ int run()
         // Get device context
         KeySearchDevice *d = getDeviceContext(_devices[_config.device], _config.blocks, _config.threads, _config.pointsPerThread);
 
-        KeyFinder f(_config.nextKey, _config.endKey, _config.compression, d, _config.stride);
+        bool isStrideMode = _config.strideMode == STRIDE_MODE_INCREMENTAL ? true : false;
+
+        KeyFinder f(_config.nextKey, _config.endKey, _config.compression, d, _config.stride, isStrideMode);
 
         f.setResultCallback(resultCallback);
         f.setStatusInterval(_config.statusInterval);
@@ -517,6 +525,7 @@ int main(int argc, char **argv)
     parser.add("", "--continue", true);
     parser.add("", "--share", true);
     parser.add("", "--stride", true);
+    parser.add("", "--stride-mode", true);
 
     try {
         parser.parse(argc, argv);
@@ -602,8 +611,21 @@ int main(int argc, char **argv)
                 }
             } else if(optArg.equals("-f", "--follow")) {
                 _config.follow = true;
+            } else if(optArg.equals("", "--stride-mode")) {
+                if(optArg.arg != STRIDE_MODE_FIXED && optArg.arg != STRIDE_MODE_INCREMENTAL) {
+                    throw std::string("invalid stride-mode : <" +
+                     optArg.arg +
+                      "> set " +
+                       STRIDE_MODE_FIXED + 
+                       " or " +
+                        STRIDE_MODE_INCREMENTAL +
+                         " instead ");
             }
-
+                else {
+                    _config.strideMode = optArg.arg;
+                }
+            }
+            
 		} catch(std::string err) {
 			Logger::log(LogLevel::Error, "Error " + opt + ": " + err);
 			return 1;

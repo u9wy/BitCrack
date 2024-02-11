@@ -60,6 +60,15 @@ public:
     virtual void getMemoryInfo(uint64_t &freeMem, uint64_t &totalMem) = 0;
 
     virtual secp256k1::uint256 getNextKey() = 0;
+
+    virtual void setStride(const secp256k1::uint256& stride) = 0;
+
+    virtual void reset() = 0;
+
+private:
+
+    virtual void updateStride() = 0;
+    
 };
 
 #endif

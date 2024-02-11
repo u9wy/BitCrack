@@ -572,6 +572,76 @@ void CLKeySearchDevice::generateStartingPoints()
     Logger::log(LogLevel::Info, "Done");
 }
 
+void CLKeySearchDevice::regenerateStartingPoints()
+{
+        uint64_t totalPoints = (uint64_t)_points;
+    uint64_t totalMemory = totalPoints * 40;
+
+    std::vector<secp256k1::uint256> exponents;
+
+    initializeBasePoints();
+
+    _pointsMemSize = totalPoints * sizeof(unsigned int) * 16 + _points * sizeof(unsigned int) * 8;
+
+    Logger::log(LogLevel::Info, "Generating " + util::formatThousands(totalPoints) + " starting points (" + util::format("%.1f", (double)totalMemory / (double)(1024 * 1024)) + "MB)");
+
+    // Generate key pairs for k, k+1, k+2 ... k + <total points in parallel - 1>
+    secp256k1::uint256 privKey = _start;
+
+    exponents.push_back(privKey);
+
+    for(uint64_t i = 1; i < totalPoints; i++) {
+        privKey = privKey.add(_stride);
+        exponents.push_back(privKey);
+    }
+
+    unsigned int *privateKeys = new unsigned int[8 * totalPoints];
+
+    for(int index = 0; index < _points; index++) {
+        splatBigInt(privateKeys, index, exponents[index]);
+    }
+
+    // Copy to device
+    _clContext->copyHostToDevice(privateKeys, _privateKeys, totalPoints * 8 * sizeof(unsigned int));
+
+    delete[] privateKeys;
+
+    // Show progress in 10% increments
+    double pct = 10.0;
+    for(int i = 0; i < 256; i++) {
+        _initKeysKernel->set_args(_points, i, _privateKeys, _chain, _xTable, _yTable, _x, _y);
+        _initKeysKernel->call(_blocks, _threads);
+
+        if(((double)(i+1) / 256.0) * 100.0 >= pct) {
+            Logger::log(LogLevel::Info, util::format("%.1f%%", pct));
+            pct += 10.0;
+        }
+    }
+}
+
+void CLKeySearchDevice::setStride(const secp256k1::uint256 &stride)
+{
+    reset();
+    _stride = stride;
+    updateStride();
+}
+
+void CLKeySearchDevice::reset()
+{
+    _iterations = 0;
+}
+
+void CLKeySearchDevice::updateStride()
+{
+    regenerateStartingPoints();
+
+        // Set the incrementor
+    secp256k1::ecpoint g = secp256k1::G();
+    secp256k1::ecpoint p = secp256k1::multiplyPoint(secp256k1::uint256((uint64_t)_points ) * _stride, g);
+
+    setIncrementor(p);
+}
+
 
 secp256k1::uint256 CLKeySearchDevice::getNextKey()
 {

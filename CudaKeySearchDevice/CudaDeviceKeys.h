@@ -76,6 +76,8 @@ public:
 
 	void clearPublicKeys();
 
+	void reset();
+
 };
 
 #endif

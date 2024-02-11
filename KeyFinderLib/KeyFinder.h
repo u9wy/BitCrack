@@ -31,6 +31,7 @@ private:
 
 	// Each index of each thread gets a flag to indicate if it found a valid hash
 	bool _running;
+	bool _strideMode;
 
 	void(*_resultCallback)(KeySearchResult);
 	void(*_statusCallback)(KeySearchStatus);
@@ -42,10 +43,11 @@ private:
 	void removeTargetFromList(const unsigned int value[5]);
 	bool isTargetInList(const unsigned int value[5]);
 	void setTargetsOnDevice();
+	void reset();
 
 public:
 
-    KeyFinder(const secp256k1::uint256 &startKey, const secp256k1::uint256 &endKey, int compression, KeySearchDevice* device, const secp256k1::uint256 &stride);
+    KeyFinder(const secp256k1::uint256 &startKey, const secp256k1::uint256 &endKey, int compression, KeySearchDevice* device, const secp256k1::uint256 &stride,bool strideMode);
 
 	~KeyFinder();
 

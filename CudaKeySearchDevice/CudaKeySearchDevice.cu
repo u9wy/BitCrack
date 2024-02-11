@@ -259,3 +259,28 @@ __global__ void keyFinderKernelWithDouble(int points, int compression)
 {
     doIterationWithDouble(points, compression);
 }
+
+void cudaReset()
+{
+    // Deallocate chain buffer
+    cleanupChainBuf();
+
+    // // Reset constant values
+    // cudaError_t err = cudaMemset(_INC_X, 0, sizeof(unsigned int) * 8);
+    // if (err != cudaSuccess) {
+    //     // Handle error
+    // }
+    // err = cudaMemset(_INC_Y, 0, sizeof(unsigned int) * 8);
+    // if (err != cudaSuccess) {
+    //     // Handle error
+    // }
+    // err = cudaMemset(_CHAIN, 0, sizeof(unsigned int *));
+    // if (err != cudaSuccess) {
+    //     // Handle error
+    // }
+
+    // You may also need to reset any other device variables or states
+
+    // Ensure _chainBufferPtr is NULL
+    _chainBufferPtr = NULL;
+}

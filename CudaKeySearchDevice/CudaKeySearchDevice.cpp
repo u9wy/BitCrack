@@ -58,6 +58,11 @@ CudaKeySearchDevice::CudaKeySearchDevice(int device, int threads, int pointsPerT
     _pointsPerThread = pointsPerThread;
 }
 
+CudaKeySearchDevice::~CudaKeySearchDevice()
+{
+    _deviceKeys.clearPrivateKeys();
+}
+
 void CudaKeySearchDevice::init(const secp256k1::uint256 &start, int compression, const secp256k1::uint256 &stride)
 {
     if(start.cmp(secp256k1::N) >= 0) {
@@ -126,9 +131,69 @@ void CudaKeySearchDevice::generateStartingPoints()
 
     Logger::log(LogLevel::Info, "Done");
 
-    _deviceKeys.clearPrivateKeys();
 }
 
+void CudaKeySearchDevice::regenerateStartingPoints()
+{
+    uint64_t totalPoints = (uint64_t)_pointsPerThread * _threads * _blocks;
+    uint64_t totalMemory = totalPoints * 40;
+
+    std::vector<secp256k1::uint256> exponents;
+
+    Logger::log(LogLevel::Info, "re-generating " + util::formatThousands(totalPoints) + " starting points (" + util::format("%.1f", (double)totalMemory / (double)(1024 * 1024)) + "MB)");
+
+    // Generate key pairs for k, k+1, k+2 ... k + <total points in parallel - 1>
+    secp256k1::uint256 privKey = _startExponent;
+
+    exponents.push_back(privKey);
+
+    for(uint64_t i = 1; i < totalPoints; i++) {
+        privKey = privKey.add(_stride);
+        exponents.push_back(privKey);
+    }
+
+    cudaCall(_deviceKeys.init(_blocks, _threads, _pointsPerThread, exponents));
+
+    // Show progress in 10% increments
+    double pct = 10.0;
+    for(int i = 1; i <= 256; i++) {
+        cudaCall(_deviceKeys.doStep());
+
+        if(((double)i / 256.0) * 100.0 >= pct) {
+            Logger::log(LogLevel::Info, util::format("%.1f%%", pct));
+            pct += 10.0;
+        }
+    }
+}
+
+void CudaKeySearchDevice::setStride(const secp256k1::uint256 &stride)
+{
+    reset();
+    _stride = stride;
+    init(_startExponent,_compression,_stride);
+    //updateStride();
+}
+
+void CudaKeySearchDevice::reset()
+{
+    _deviceKeys.clearPrivateKeys();
+    _deviceKeys.clearPublicKeys();
+    _deviceKeys.reset();
+    cudaReset();
+    cudaCall(cudaDeviceReset());
+    _iterations = 0;
+}
+
+void CudaKeySearchDevice::updateStride()
+{
+    regenerateStartingPoints();
+
+    // Set the incrementor
+    secp256k1::ecpoint g = secp256k1::G();
+    secp256k1::ecpoint p = secp256k1::multiplyPoint(secp256k1::uint256((uint64_t)_threads * _blocks * _pointsPerThread) * _stride, g);
+
+    cudaCall(setIncrementorPoint(p.x, p.y));
+}
 
 void CudaKeySearchDevice::setTargets(const std::set<KeySearchTarget> &targets)
 {
@@ -314,3 +379,4 @@ secp256k1::uint256 CudaKeySearchDevice::getNextKey()
 
     return _startExponent + secp256k1::uint256(totalPoints) * _iterations * _stride;
 }
+

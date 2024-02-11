@@ -73,6 +73,8 @@ private:
 
     void generateStartingPoints();
 
+    void regenerateStartingPoints();
+
     void setIncrementor(secp256k1::ecpoint &p);
 
     void splatBigInt(secp256k1::uint256 &k, unsigned int *ptr);
@@ -107,6 +109,8 @@ private:
 
     uint64_t getOptimalBloomFilterMask(double p, size_t n);
 
+    virtual void updateStride();
+
 public:
 
     CLKeySearchDevice(uint64_t device, int threads, int pointsPerThread, int blocks = 0);
@@ -135,6 +139,12 @@ public:
     virtual void getMemoryInfo(uint64_t &freeMem, uint64_t &totalMem);
 
     virtual secp256k1::uint256 getNextKey();
+
+    virtual void setStride(const secp256k1::uint256& stride);
+
+    virtual void reset();
+
+    
 };
 
 #endif

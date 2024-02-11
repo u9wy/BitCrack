@@ -15,5 +15,6 @@ void waitForKernel();
 cudaError_t setIncrementorPoint(const secp256k1::uint256 &x, const secp256k1::uint256 &y);
 cudaError_t allocateChainBuf(unsigned int count);
 void cleanupChainBuf();
+void cudaReset();
 
 #endif

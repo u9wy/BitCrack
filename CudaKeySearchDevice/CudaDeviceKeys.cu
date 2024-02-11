@@ -395,3 +395,26 @@ bool CudaDeviceKeys::selfTest(const std::vector<secp256k1::uint256> &privateKeys
 
 	return true;
 }
+
+void CudaDeviceKeys::reset() {
+    // Free device memory
+    cudaFree(_devX);
+    cudaFree(_devY);
+    cudaFree(_devBasePointX);
+    cudaFree(_devBasePointY);
+    cudaFree(_devPrivate);
+    cudaFree(_devChain);
+
+    // Reset member variables
+    _devX = NULL;
+    _devY = NULL;
+    _devBasePointX = NULL;
+    _devBasePointY = NULL;
+    _devPrivate = NULL;
+    _devChain = NULL;
+
+    _blocks = 0;
+    _threads = 0;
+    _pointsPerThread = 0;
+    _step = 0;
+}

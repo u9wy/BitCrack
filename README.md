@@ -62,8 +62,11 @@ Options:
 --list-devices
     List available devices
 
---stride NUMBER
-    Increment by NUMBER
+--stride HEX NUMBER
+    Increment by HEX NUMBER
+
+--stride-mode MODE
+    fixed or incremental    
 
 --share M/N
     Divide the keyspace into N equal sized shares, process the Mth share
