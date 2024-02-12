@@ -130,7 +130,7 @@ void CudaKeySearchDevice::generateStartingPoints()
     }
 
     Logger::log(LogLevel::Info, "Done");
-
+    _deviceKeys.clearPrivateKeys();
 }
 
 void CudaKeySearchDevice::regenerateStartingPoints()
@@ -140,7 +140,7 @@ void CudaKeySearchDevice::regenerateStartingPoints()
 
     std::vector<secp256k1::uint256> exponents;
 
-    Logger::log(LogLevel::Info, "re-generating " + util::formatThousands(totalPoints) + " starting points (" + util::format("%.1f", (double)totalMemory / (double)(1024 * 1024)) + "MB)");
+    //Logger::log(LogLevel::Info, "re-generating " + util::formatThousands(totalPoints) + " starting points (" + util::format("%.1f", (double)totalMemory / (double)(1024 * 1024)) + "MB)");
 
     // Generate key pairs for k, k+1, k+2 ... k + <total points in parallel - 1>
     secp256k1::uint256 privKey = _startExponent;
@@ -155,23 +155,23 @@ void CudaKeySearchDevice::regenerateStartingPoints()
     cudaCall(_deviceKeys.init(_blocks, _threads, _pointsPerThread, exponents));
 
     // Show progress in 10% increments
-    double pct = 10.0;
+    // double pct = 10.0;
     for(int i = 1; i <= 256; i++) {
         cudaCall(_deviceKeys.doStep());
 
-        if(((double)i / 256.0) * 100.0 >= pct) {
-            Logger::log(LogLevel::Info, util::format("%.1f%%", pct));
-            pct += 10.0;
-        }
+        // if(((double)i / 256.0) * 100.0 >= pct) {
+        //     Logger::log(LogLevel::Info, util::format("%.1f%%", pct));
+        //     pct += 10.0;
+        // }
     }
+    _deviceKeys.clearPrivateKeys();
 }
 
 void CudaKeySearchDevice::setStride(const secp256k1::uint256 &stride)
 {
     reset();
     _stride = stride;
-    init(_startExponent,_compression,_stride);
-    //updateStride();
+    updateStride();
 }
 
 void CudaKeySearchDevice::reset()
@@ -179,8 +179,8 @@ void CudaKeySearchDevice::reset()
     _deviceKeys.clearPrivateKeys();
     _deviceKeys.clearPublicKeys();
     _deviceKeys.reset();
-    cudaReset();
-    cudaCall(cudaDeviceReset());
+    //cudaReset();
+    //cudaCall(cudaDeviceReset());
     _iterations = 0;
 }
 
@@ -191,6 +191,8 @@ void CudaKeySearchDevice::updateStride()
     // Set the incrementor
     secp256k1::ecpoint g = secp256k1::G();
     secp256k1::ecpoint p = secp256k1::multiplyPoint(secp256k1::uint256((uint64_t)_threads * _blocks * _pointsPerThread) * _stride, g);
+
+    cudaCall(_resultList.init(sizeof(CudaDeviceResult), 16));
 
     cudaCall(setIncrementorPoint(p.x, p.y));
 }

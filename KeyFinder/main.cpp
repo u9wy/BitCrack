@@ -131,6 +131,8 @@ void statusCallback(KeySearchStatus info)
 
     std::string targetStr = util::format(info.targets) + " target" + (info.targets > 1 ? "s" : "");
 
+    std::string strideCount = "[" + util::format(info.stride.toUint64()) + "]"; 
+
 
 	// Fit device name in 16 characters, pad with spaces if less
 	std::string devName = info.deviceName.substr(0, 16);
@@ -144,7 +146,7 @@ void statusCallback(KeySearchStatus info)
         formatStr = "\r%s %s / %sMB | %s %s %s %s";
     }
 
-	printf(formatStr, devName.c_str(), usedMemStr.c_str(), totalMemStr.c_str(), targetStr.c_str(), speedStr.c_str(), totalStr.c_str(), timeStr.c_str());
+	printf(formatStr, devName.c_str(), usedMemStr.c_str(), totalMemStr.c_str(), targetStr.c_str(), speedStr.c_str(), totalStr.c_str(), timeStr.c_str(),strideCount.c_str());
 
     if(_config.checkpointFile.length() > 0) {
         uint64_t t = util::getSystemTime();

@@ -210,6 +210,7 @@ void KeyFinder::run()
 			info.deviceName = _device->getDeviceName();
 			info.targets = _targets.size();
             info.nextKey = getNextKey();
+			info.stride = _stride;
 
 			_statusCallback(info);
 
@@ -252,7 +253,7 @@ void KeyFinder::run()
 			if (_strideMode && _stride.cmp((_endKey - _startKey).div(2)) < 0)
 			{
 				reset();
-				Logger::log(LogLevel::Info, "Counting by: " + _stride.toString());
+				//Logger::log(LogLevel::Info, "Counting by: " + _stride.toString());
 			}
 			else
 			{

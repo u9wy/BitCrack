@@ -34,6 +34,7 @@ typedef struct {
     uint64_t deviceMemory;
     uint64_t targets;
     secp256k1::uint256 nextKey;
+    secp256k1::uint256 stride;
 }KeySearchStatus;
 
 
